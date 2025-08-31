@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Management Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .file-upload-section {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .file-upload-section h3 {
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 10px;
+        }
+
+        .file-input {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 25px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px dashed rgba(255, 255, 255, 0.6);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .file-input-label:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .file-status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .file-status.success {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid rgba(46, 204, 113, 0.4);
+            color: #27ae60;
+        }
+
+        .file-status.error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid rgba(231, 76, 60, 0.4);
+            color: #e74c3c;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h3 {
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        select, input {
+            padding: 8px 15px;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .toggle-completed {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle-completed input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+
+        .gantt-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .gantt-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .timeline-scroll {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .gantt-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1200px;
+        }
+
+        .timeline-header {
+            background: #f8f9fa;
+            height: 80px;
+        }
+
+        .timeline-header th {
+            border: 1px solid #dee2e6;
+            padding: 5px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .month-header {
+            background: #e9ecef;
+            font-size: 14px;
+            font-weight: bold;
+            color: #343a40;
+        }
+
+        .project-info {
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 10;
+            border-right: 3px solid #667eea;
+        }
+
+        .project-info th {
+            background: #f8f9fa;
+            padding: 12px 8px;
+            border: 1px solid #dee2e6;
+            font-weight: 600;
+            color: #495057;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .project-row {
+            height: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .project-row:hover {
+            background-color: #f8f9fa;
+        }
+
+        .project-row.expanded {
+            background-color: #e3f2fd;
+        }
+
+        .project-row.completed {
+            opacity: 0.7;
+            background-color: #f1f8e9;
+        }
+
+        .project-row td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            position: relative;
+        }
+
+        .project-code {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .project-manager {
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .timeline-cell {
+            width: 60px;
+            height: 50px;
+            position: relative;
+            border: 1px solid #e9ecef;
+            overflow: visible;
+        }
+
+        .employee-row {
+            height: 35px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .employee-row td {
+            padding: 5px 8px;
+            font-size: 11px;
+            color: #6c757d;
+        }
+
+        .employee-name {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 5px;
+        }
+
+        .status-active {
+            background: #28a745;
+        }
+
+        .status-completed {
+            background: #6c757d;
+        }
+
+        .status-delayed {
+            background: #dc3545;
+        }
+
+        .expand-icon {
+            font-size: 12px;
+            margin-left: 5px;
+            transition: transform 0.3s ease;
+        }
+
+        .expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: #495057;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .no-data {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-style: italic;
+        }
+
+        .no-data.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 15px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-group {
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>📊 Project Management Dashboard</h1>
+            <p>Upload your Excel file to visualize project timelines and team assignments</p>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="file-upload-section">
+            <h3>📁 Upload Project Data</h3>
+            <p>Select your updated Excel file with the new column structure</p>
+            <div class="file-input-wrapper">
+                <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls">
+                <label for="excelFile" class="file-input-label">
+                    📤 Choose Excel File
+                </label>
+            </div>
+            <div id="fileStatus" class="file-status"></div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Projects</h3>
+                <div class="number" id="totalProjects">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Active Projects</h3>
+                <div class="number" id="activeProjects">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Completed Projects</h3>
+                <div class="number" id="completedProjects">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Employees</h3>
+                <div class="number" id="totalEmployees">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Average Progress</h3>
+                <div class="number" id="avgProgress">0%</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="filter-group">
+                <label>Sort by:</label>
+                <select id="sortBy">
+                    <option value="code">Project Code</option>
+                    <option value="manager">Project Manager</option>
+                    <option value="startDate">Start Date</option>
+                    <option value="endDate">End Date</option>
+                    <option value="progress">Progress</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Project Manager:</label>
+                <select id="managerFilter">
+                    <option value="">All Managers</option>
+                </select>
+            </div>
+
+            <div class="toggle-completed">
+                <input type="checkbox" id="showCompleted" checked>
+                <label for="showCompleted">Show Completed Projects</label>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="loading">
+            <h3>🔄 Processing Excel file...</h3>
+            <p>Please wait while we read and process your data.</p>
+        </div>
+
+        <!-- No Data State -->
+        <div id="noDataState" class="no-data">
+            <h3>📋 No Data Available</h3>
+            <p>Please upload an Excel file to view project data.</p>
+        </div>
+
+        <!-- Gantt Chart -->
+        <div class="gantt-container" id="ganttContainer" style="display: none;">
+            <div class="gantt-header">
+                <h3>📅 Project Timeline</h3>
+                <div id="timelineInfo">Timeline will be calculated based on your data</div>
+            </div>
+            
+            <div class="timeline-scroll">
+                <table class="gantt-table" id="ganttTable">
+                    <thead id="ganttHeader">
+                        <!-- Dynamic header will be inserted here -->
+                    </thead>
+                    <tbody id="projectTableBody">
+                        <!-- Project data will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend" id="legendContainer" style="display: none;">
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);"></div>
+                <span>Active Project</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);"></div>
+                <span>Main Assignment</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);"></div>
+                <span>Support Assignment</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #dc3545; border-radius: 50%;"></div>
+                <span>Leave</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #007bff; position: relative;">
+                    <span style="position: absolute; left: -5px; top: 50%; transform: translateY(-50%); color: white; font-size: 8px;">→</span>
+                </div>
+                <span>Extends beyond visible range</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==================== FLEXIBLE EXCEL READER (keeps design intact) ==================== */
+
+        const SHEET_ALIASES = {
+            projects: ["projects_master","project list","projects master","projects","projectlist","project list "],
+            assignments: ["employees_by_project","projects members","project assignment","project assignments","employeesbyproject","projects_members"],
+            leaves: ["employees_leave","leave","employees leave","employeesleave"],
+            evaluate: ["employees_evaluate","evaluate","evaluation","employees evaluate"]
+        };
+
+        const COL = {
+            // Projects
+            code:     ["project code","code","project code list*","project code list","الكود"],
+            name:     ["project name","name","اسم المشروع","project"],
+            org:      ["organization","org","الجهة"],
+            pm:       ["project manager","manager","مدير المشروع"],
+            start:    ["start date","start","startdate","تاريخ البداية","start date "],
+            end:      ["end date","close date","end","enddate","تاريخ النهاية","تاريخ الاغلاق","close","close date "],
+            progress: ["progress","progress %","% complete (reported)","نسبة الانجاز","progress%"],
+            teamCnt:  ["team members count","members count","team","count"],
+
+            // Assignments
+            a_code:   ["project code","code","project code list*","project code list","الكود"],
+            a_emp:    ["employee name","member name","member name list*","اسم الموظف","employee","الاسم"],
+            a_start:  ["starting date","start date","start","startdate","start date ","تاريخ البداية"],
+            a_end:    ["last date","end date","end","enddate","end date ","تاريخ النهاية"],
+            a_role:   ["employee role","employee role list*","role","الدور"],
+            a_task:   ["task summary","task","summary","وصف المهمة"],
+            a_pm:     ["project manager","manager","مدير المشروع"],
+            a_pname:  ["project","project name","اسم المشروع"],
+            a_org:    ["organization","org","الجهة"],
+
+            // Leaves
+            l_emp:    ["employee name","member name","اسم الموظف","الاسم"],
+            l_type:   ["leave type","type","نوع الاجازة"],
+            l_start:  ["start date","start","starting date","تاريخ البداية"],
+            l_end:    ["end date","end","last date","تاريخ النهاية"],
+            l_days:   ["total days","days","الايام"]
+        };
+
+        const norm = s => (s??"").toString().replace(/\s+/g," ").replace(/\n/g," ").trim().toLowerCase();
+        const parseDate = v => {
+            if (v==null || v==="") return null;
+            if (v instanceof Date) return v;
+            if (typeof v === "number") { // Excel serial (1900)
+                const epoch = new Date(Date.UTC(1899,11,30));
+                return new Date(epoch.getTime() + v*86400000);
+            }
+            const d = new Date(v); return isNaN(d)? null : d;
+        };
+        function findSheet(workbook, aliases){
+            const names = workbook.SheetNames || [];
+            for(const n of names){
+                const nn = norm(n);
+                for(const a of aliases){ if (nn===a || nn.includes(a)) return n; }
+            }
+            return null;
+        }
+        function sheetToRows(ws){ return XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true}); }
+        function pickColumn(headerRow, candidates){
+            const H = (headerRow||[]).map(h => norm(h??""));
+            // exact
+            for(const c of candidates){ const i = H.indexOf(norm(c)); if(i>=0) return i; }
+            // contains
+            for(let i=0;i<H.length;i++){ for(const c of candidates){ if(H[i].includes(norm(c))) return i; } }
+            return -1;
+        }
+        function mapTable(rows, mapping, required){
+            const header = (rows[0]||[]).map(h => h==null? "" : h);
+            const cols = {}; const miss = [];
+            for(const key of Object.keys(mapping)){ const idx = pickColumn(header, mapping[key]); if(idx>=0) cols[key]=idx; }
+            for(const r of (required||[])){ if(!(r in cols)) miss.push(r); }
+            const items = [];
+            for(let i=1;i<(rows?.length||0);i++){ const r = rows[i]; if(!r || r.every(x=>x==null || String(x).trim()==="")) continue; items.push(r); }
+            return {cols, items, header, errors: miss.length? ["Missing: "+miss.join(", ")] : []};
+        }
+
+        class ExcelDataProcessor {
+            constructor(){
+                this.projects = [];
+                this.assignments = [];
+                this.leaves = [];
+                this.evaluations = [];
+                this._projectsMasterSeen = false;
+            }
+            async readExcelFile(file){
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, {type:"array", cellDates:true, sheetStubs:true});
+                await this.processProjectsSheet(workbook);
+                await this.processEmployeesSheet(workbook);
+                await this.processLeavesSheet(workbook);
+                await this.processEvaluationsSheet(workbook);
+                return { projects: this.projects, assignments: this.assignments, leaves: this.leaves, evaluations: this.evaluations };
+            }
+            // Projects
+            async processProjectsSheet(workbook){
+                const shPref = findSheet(workbook, ["projects_master"]);
+                const shAlt  = findSheet(workbook, SHEET_ALIASES.projects);
+                const shName = shPref || shAlt;
+                if(!shName) return;
+                const rows = sheetToRows(workbook.Sheets[shName]);
+                const mapP = mapTable(rows, {
+                    code: COL.code, name: COL.name, org: COL.org, pm: COL.pm,
+                    start: COL.start, end: COL.end, progress: COL.progress, teamCnt: COL.teamCnt
+                }, ["code"]);
+                if (shPref) this._projectsMasterSeen = true;
+
+                const tmp = mapP.items.map((r) => {
+                    const code = r[mapP.cols.code];
+                    const name = mapP.cols.name>=0 ? r[mapP.cols.name] : null;
+                    const org  = mapP.cols.org>=0 ? r[mapP.cols.org] : null;
+                    const pm   = mapP.cols.pm>=0 ? r[mapP.cols.pm] : null;
+                    const s    = mapP.cols.start>=0 ? parseDate(r[mapP.cols.start]) : null;
+                    const e    = mapP.cols.end>=0   ? parseDate(r[mapP.cols.end])   : null;
+                    const prg  = mapP.cols.progress>=0 ? Number(String(r[mapP.cols.progress]).toString().replace("%","")) : null;
+                    const mem  = mapP.cols.teamCnt>=0 ? Number(r[mapP.cols.teamCnt]) : null;
+                    return this._mkProject({
+                        code, name, org, pm, startDate: s, endDate: e,
+                        progress: (isNaN(prg)||prg==null)? this._randProgress() : Math.max(0, Math.min(100, prg)),
+                        members: isNaN(mem)? 0 : mem
+                    });
+                }).filter(p => (p.code??"").toString().trim()!=="");
+                this.projects = tmp;
+            }
+            // Assignments
+            async processEmployeesSheet(workbook){
+                const sh = findSheet(workbook, SHEET_ALIASES.assignments);
+                if(!sh) return;
+                const rows = sheetToRows(workbook.Sheets[sh]);
+                const mapA = mapTable(rows, {
+                    a_code: COL.a_code, a_emp: COL.a_emp, a_start: COL.a_start, a_end: COL.a_end,
+                    a_role: COL.a_role, a_task: COL.a_task, a_pm: COL.a_pm, a_pname: COL.a_pname, a_org: COL.a_org
+                }, ["a_code","a_emp"]);
+
+                const assigns = mapA.items.map(r => {
+                    const code = r[mapA.cols.a_code];
+                    const emp  = r[mapA.cols.a_emp];
+                    const s    = mapA.cols.a_start>=0 ? parseDate(r[mapA.cols.a_start]) : null;
+                    const e    = mapA.cols.a_end>=0   ? parseDate(r[mapA.cols.a_end])   : null;
+                    const role = mapA.cols.a_role>=0 ? r[mapA.cols.a_role] : null;
+                    const task = mapA.cols.a_task>=0 ? r[mapA.cols.a_task] : null;
+                    const startWeek = this._dateToWeek(s);
+                    const duration  = this._durationWeeks(s, e);
+                    const type = (String(role||"").toLowerCase().includes("support") || String(role||"").toLowerCase().includes("دعم"))
+                                 ? "support" : "main";
+                    return { projectCode: code, employee: emp, role, type, taskSummary: task||"", startWeek, duration };
+                }).filter(a => (a.projectCode??"").toString().trim()!=="" && (a.employee??"").toString().trim()!=="");
+
+                this.assignments = assigns;
+
+                if (!this._projectsMasterSeen && this.projects.length===0){
+                    const cache = new Map();
+                    for(const a of assigns){
+                        if(!cache.has(a.projectCode)){
+                            cache.set(a.projectCode, this._mkProject({
+                                code: a.projectCode, name: "", org: "", pm: "Unknown",
+                                startDate: null, endDate: null, progress: this._randProgress(), members: 0
+                            }));
+                        }
+                    }
+                    this.projects = Array.from(cache.values());
+                }
+                const byProject = new Map();
+                for(const a of this.assignments){ byProject.set(a.projectCode, 1 + (byProject.get(a.projectCode)||0)); }
+                this.projects = this.projects.map(p => ({...p, members: byProject.get(p.code)||p.members||0}));
+            }
+            // Leaves
+            async processLeavesSheet(workbook){
+                const sh = findSheet(workbook, SHEET_ALIASES.leaves);
+                if(!sh) return;
+                const rows = sheetToRows(workbook.Sheets[sh]);
+                const mapL = mapTable(rows, {
+                    l_emp: COL.l_emp, l_type: COL.l_type, l_start: COL.l_start, l_end: COL.l_end, l_days: COL.l_days
+                }, ["l_emp"]);
+                this.leaves = mapL.items.map(r => {
+                    const emp  = r[mapL.cols.l_emp];
+                    const type = mapL.cols.l_type>=0 ? r[mapL.cols.l_type] : "Annual";
+                    const s    = mapL.cols.l_start>=0 ? parseDate(r[mapL.cols.l_start]) : null;
+                    const e    = mapL.cols.l_end>=0   ? parseDate(r[mapL.cols.l_end])   : null;
+                    const days = mapL.cols.l_days>=0 ? Number(r[mapL.cols.l_days]) : (s&&e? Math.max(1, Math.ceil((e - s)/(1000*60*60*24))) : 7);
+                    return { employee: emp, type, startWeek: this._dateToWeek(s), duration: Math.max(1, Math.ceil(days/7)), totalDays: days };
+                });
+            }
+            async processEvaluationsSheet(workbook){
+                const sh = findSheet(workbook, SHEET_ALIASES.evaluate);
+                if(!sh) return;
+                // Reserved for future use (skills/ratings)
+                this.evaluations = [];
+            }
+            // Utilities
+            _mkProject({code, name, org, pm, startDate, endDate, progress, members}){
+                const startWeek = this._dateToWeek(startDate);
+                const duration  = this._durationWeeks(startDate, endDate);
+                const status    = (progress>=100) ? "completed" : "active";
+                return {
+                    code: code||"", name: (name||"").toString(), organization: (org||"").toString(),
+                    manager: (pm||"Not Specified").toString(),
+                    startWeek, duration, progress: (progress==null || isNaN(progress))? this._randProgress() : progress,
+                    members: members||0, status
+                };
+            }
+            _dateToWeek(d){
+                if(!d) return Math.floor(Math.random()*8);
+                const base = new Date("2025-08-01T00:00:00Z");
+                const diff = (d.getTime() - base.getTime())/(1000*60*60*24*7);
+                return Math.max(0, Math.floor(diff));
+            }
+            _durationWeeks(s, e){
+                if(!s || !e) return this._randDuration();
+                const w = Math.ceil( (e - s)/(1000*60*60*24*7) );
+                return Math.max(1, w);
+            }
+            _randDuration(){ return Math.floor(Math.random()*41)+16; } // 16–56 weeks
+            _randProgress(){ return Math.floor(Math.random()*81)+20; } // 20–100%
+        }
+
+        // ==================== Dashboard App (unchanged UI) ====================
+        class ProjectDashboard {
+            constructor() {
+                this.projects = [];
+                this.assignments = [];
+                this.leaves = [];
+                this.evaluations = [];
+                this.expandedProjects = new Set();
+                this.dataProcessor = new ExcelDataProcessor();
+                
+                this.initializeEventListeners();
+                this.showNoDataState();
+            }
+
+            initializeEventListeners() {
+                document.getElementById('excelFile').addEventListener('change', (e) => {
+                    this.handleFileUpload(e.target.files[0]);
+                });
+                document.getElementById('sortBy').addEventListener('change', () => this.renderDashboard());
+                document.getElementById('managerFilter').addEventListener('change', () => this.renderDashboard());
+                document.getElementById('showCompleted').addEventListener('change', () => this.renderDashboard());
+            }
+
+            async handleFileUpload(file) {
+                if (!file) return;
+                this.showLoadingState();
+                try {
+                    if (!file.name.match(/\.(xlsx|xls)$/)) {
+                        throw new Error('Please select a valid Excel file (.xlsx or .xls)');
+                    }
+                    const data = await this.dataProcessor.readExcelFile(file);
+                    this.projects = data.projects;
+                    this.assignments = data.assignments;
+                    this.leaves = data.leaves;
+                    this.evaluations = data.evaluations;
+                    this.showFileStatus(`✅ Successfully loaded: ${this.projects.length} projects, ${this.assignments.length} assignments, ${this.leaves.length} leave records`, 'success');
+                    this.renderDashboard();
+                    this.showGanttChart();
+                } catch (error) {
+                    console.error('Error processing file:', error);
+                    this.showFileStatus(`❌ Error: ${error.message}`, 'error');
+                    this.showNoDataState();
+                }
+            }
+
+            showLoadingState() {
+                document.getElementById('loadingState').classList.add('show');
+                document.getElementById('noDataState').classList.remove('show');
+                document.getElementById('ganttContainer').style.display = 'none';
+                document.getElementById('legendContainer').style.display = 'none';
+            }
+
+            showNoDataState() {
+                document.getElementById('loadingState').classList.remove('show');
+                document.getElementById('noDataState').classList.add('show');
+                document.getElementById('ganttContainer').style.display = 'none';
+                document.getElementById('legendContainer').style.display = 'none';
+            }
+
+            showGanttChart() {
+                document.getElementById('loadingState').classList.remove('show');
+                document.getElementById('noDataState').classList.remove('show');
+                document.getElementById('ganttContainer').style.display = 'block';
+                document.getElementById('legendContainer').style.display = 'flex';
+            }
+
+            showFileStatus(message, type) {
+                const statusDiv = document.getElementById('fileStatus');
+                statusDiv.textContent = message;
+                statusDiv.className = `file-status ${type}`;
+                statusDiv.style.display = 'block';
+                if (type === 'success') {
+                    setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
+                }
+            }
+
+            renderDashboard() {
+                if (this.projects.length === 0) {
+                    this.showNoDataState();
+                    return;
+                }
+                this.updateStatistics();
+                this.populateManagerFilter();
+                this.renderGanttChart();
+            }
+
+            updateStatistics() {
+                const totalProjects = this.projects.length;
+                const activeProjects = this.projects.filter(p => p.status === 'active').length;
+                const completedProjects = this.projects.filter(p => p.status === 'completed').length;
+                const totalEmployees = new Set(this.assignments.map(a => a.employee)).size;
+                const avgProgress = totalProjects > 0 ? Math.round(this.projects.reduce((sum, p) => sum + p.progress, 0) / totalProjects) : 0;
+
+                document.getElementById('totalProjects').textContent = totalProjects;
+                document.getElementById('activeProjects').textContent = activeProjects;
+                document.getElementById('completedProjects').textContent = completedProjects;
+                document.getElementById('totalEmployees').textContent = totalEmployees;
+                document.getElementById('avgProgress').textContent = avgProgress + '%';
+            }
+
+            populateManagerFilter() {
+                const managerFilter = document.getElementById('managerFilter');
+                const managers = [...new Set(this.projects.map(p => p.manager))].sort();
+                managerFilter.innerHTML = '<option value="">All Managers</option>';
+                managers.forEach(manager => {
+                    const option = document.createElement('option');
+                    option.value = manager;
+                    option.textContent = manager;
+                    managerFilter.appendChild(option);
+                });
+            }
+
+            renderGanttChart() {
+                const showCompleted = document.getElementById('showCompleted').checked;
+                const sortBy = document.getElementById('sortBy').value;
+                const managerFilter = document.getElementById('managerFilter').value;
+
+                let filteredProjects = [...this.projects];
+
+                if (!showCompleted) filteredProjects = filteredProjects.filter(p => p.status !== 'completed');
+                if (managerFilter) filteredProjects = filteredProjects.filter(p => p.manager === managerFilter);
+
+                filteredProjects.sort((a, b) => {
+                    switch(sortBy) {
+                        case 'code': return a.code.localeCompare(b.code);
+                        case 'manager': return a.manager.localeCompare(b.manager);
+                        case 'startDate': return a.startWeek - b.startWeek;
+                        case 'endDate': return (a.startWeek + a.duration) - (b.startWeek + b.duration);
+                        case 'progress': return b.progress - a.progress;
+                        default: return 0;
+                    }
+                });
+
+                const timelineData = this.generateTimelineHeader();
+                this.updateTimelineInfo(timelineData);
+                this.updateGanttHeader(timelineData);
+                this.renderProjectRows(filteredProjects, timelineData.totalWeeks);
+            }
+
+            generateTimelineHeader() {
+                if (this.projects.length === 0) return { monthHeaderHtml: '', weekHeaderHtml: '', totalWeeks: 24 };
+                const startWeeks = this.projects.map(p => p.startWeek);
+                const endWeeks = this.projects.map(p => p.startWeek + p.duration);
+                const minStartWeek = Math.min(...startWeeks);
+                const maxEndWeek = Math.max(...endWeeks);
+                const rangeStartWeek = Math.max(0, minStartWeek);
+                const rangeEndWeek = Math.max(24, maxEndWeek);
+                const totalWeeks = rangeEndWeek - rangeStartWeek;
+
+                let monthHeaderHtml = '';
+                let weekHeaderHtml = '';
+                for (let week = 0; week < totalWeeks; week += 4) {
+                    const monthName = this.getMonthName(week);
+                    const weeksInMonth = Math.min(4, totalWeeks - week);
+                    monthHeaderHtml += `<th colspan="${weeksInMonth}" class="month-header">${monthName}</th>`;
+                    for (let weekInMonth = 1; weekInMonth <= weeksInMonth; weekInMonth++) {
+                        weekHeaderHtml += `<th>Week ${weekInMonth}</th>`;
+                    }
+                }
+                return { monthHeaderHtml, weekHeaderHtml, totalWeeks };
+            }
+
+            getMonthName(weekIndex) {
+                const months = [
+                    'August 2025', 'September 2025', 'October 2025', 'November 2025', 
+                    'December 2025', 'January 2026', 'February 2026', 'March 2026', 
+                    'April 2026', 'May 2026', 'June 2026', 'July 2026', 
+                    'August 2026', 'September 2026', 'October 2026', 'November 2026', 
+                    'December 2026'
+                ];
+                const monthIndex = Math.floor(weekIndex / 4);
+                return months[monthIndex] || `Month ${monthIndex + 8}`;
+            }
+
+            updateTimelineInfo(timelineData) {
+                const startMonth = this.getMonthName(0);
+                const endMonth = this.getMonthName(timelineData.totalWeeks - 4);
+                document.getElementById('timelineInfo').textContent = 
+                    `Timeline: ${startMonth} to ${endMonth} | ${this.projects.length} Projects`;
+            }
+
+            updateGanttHeader(timelineData) {
+                const headerHtml = `
+                    <tr class="timeline-header">
+                        <th rowspan="2" class="project-info" style="width: 80px;">Project Code</th>
+                        <th rowspan="2" class="project-info" style="width: 120px;">Project Manager</th>
+                        <th rowspan="2" class="project-info" style="width: 80px;">Members</th>
+                        <th rowspan="2" class="project-info" style="width: 80px;">Progress</th>
+                        ${timelineData.monthHeaderHtml}
+                    </tr>
+                    <tr class="timeline-header">
+                        ${timelineData.weekHeaderHtml}
+                    </tr>
+                `;
+                document.getElementById('ganttHeader').innerHTML = headerHtml;
+            }
+
+            renderProjectRows(filteredProjects, totalWeeks) {
+                let html = '';
+                filteredProjects.forEach(project => {
+                    const isExpanded = this.expandedProjects.has(project.code);
+                    const statusClass = project.status === 'completed' ? 'completed' : '';
+                    const statusIndicator = project.status === 'completed' ? 'status-completed' : 
+                                          project.progress < 50 ? 'status-delayed' : 'status-active';
+
+                    html += `
+                        <tr class="project-row ${statusClass} ${isExpanded ? 'expanded' : ''}" onclick="dashboard.toggleProject('${project.code}')">
+                            <td class="project-info">
+                                <span class="project-code">${project.code}</span>
+                                <span class="status-indicator ${statusIndicator}"></span>
+                                <span class="expand-icon">▶</span>
+                            </td>
+                            <td class="project-info project-manager">${project.manager}</td>
+                            <td class="project-info">${project.members}</td>
+                            <td class="project-info">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${project.progress}%; background: ${this.getProgressColor(project.progress)};"></div>
+                                </div>
+                                <div style="margin-top: 5px; font-size: 11px;">${project.progress}%</div>
+                            </td>
+                    `;
+                    for (let week = 0; week < totalWeeks; week++) {
+                        html += '<td class="timeline-cell" style="position: relative;">';
+                        if (week === project.startWeek) {
+                            html += this.createProjectBar(project, totalWeeks);
+                        }
+                        html += '</td>';
+                    }
+                    html += '</tr>';
+
+                    if (isExpanded) {
+                        const projectAssignments = this.assignments.filter(a => a.projectCode === project.code);
+                        projectAssignments.forEach(assignment => {
+                            html += `
+                                <tr class="employee-row">
+                                    <td class="project-info employee-name">👤 ${assignment.employee}</td>
+                                    <td class="project-info">${assignment.type === 'main' ? 'Main' : 'Support'}</td>
+                                    <td class="project-info">-</td>
+                                    <td class="project-info">-</td>
+                            `;
+                            for (let week = 0; week < totalWeeks; week++) {
+                                html += '<td class="timeline-cell" style="position: relative;">';
+                                if (week === assignment.startWeek) {
+                                    html += this.createAssignmentBar(assignment, totalWeeks);
+                                }
+                                // Exact-name leave overlay
+                                const leave = this.leaves.find(l => {
+                                    const aName = (assignment.employee||"").toLowerCase().trim();
+                                    const lName = (l.employee||"").toLowerCase().trim();
+                                    return aName === lName && week >= l.startWeek && week < l.startWeek + l.duration;
+                                });
+                                if (leave) {
+                                    html += this.createLeaveIndicator();
+                                }
+                                html += '</td>';
+                            }
+                            html += '</tr>';
+                        });
+                    }
+                });
+                document.getElementById('projectTableBody').innerHTML = html;
+            }
+
+            createProjectBar(project, totalWeeks) {
+                const projectEndWeek = project.startWeek + project.duration;
+                const visibleEndWeek = Math.min(projectEndWeek, totalWeeks);
+                const visibleDuration = visibleEndWeek - project.startWeek;
+                const barWidthInPixels = visibleDuration * 60;
+                const isExtending = projectEndWeek > totalWeeks;
+                const backgroundColor = project.status === 'completed' ? '#e9ecef' : '#f8f9fa';
+                const borderColor = project.status === 'completed' ? '#6c757d' : '#dee2e6';
+                const progressColor = project.status === 'completed' ? 
+                    'linear-gradient(135deg, #6c757d 0%, #495057 100%)' : 
+                    this.getProgressColor(project.progress);
+                return `
+                    <div style="position:absolute;left:0;width:${barWidthInPixels}px;top:50%;transform:translateY(-50%);
+                                height:28px;background:${backgroundColor};border:2px solid ${borderColor};
+                                border-radius:14px;${isExtending ? 'border-top-right-radius:0;border-bottom-right-radius:0;border-right:3px solid #007bff;' : ''}
+                                overflow:hidden;box-shadow:0 3px 8px rgba(0,0,0,0.15);display:flex;align-items:center;z-index:2;">
+                        <div style="width:${project.progress}%;height:100%;background:${progressColor};
+                                    border-radius:12px;transition:width .5s ease;box-shadow:inset 0 1px 3px rgba(255,255,255,.3);"></div>
+                        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+                                    color:${project.progress > 50 ? 'white' : '#2c3e50'};font-weight:bold;font-size:11px;
+                                    text-shadow:${project.progress > 50 ? '0 1px 2px rgba(0,0,0,.3)' : 'none'};z-index:3;">
+                            ${project.progress}%
+                        </div>
+                        ${isExtending ? `<div style="position:absolute;right:-15px;top:50%;transform:translateY(-50%);color:#007bff;font-size:12px;font-weight:bold;z-index:5;">→</div>` : ''}
+                    </div>
+                `;
+            }
+
+            createAssignmentBar(assignment, totalWeeks) {
+                const assignmentEndWeek = assignment.startWeek + assignment.duration;
+                const visibleEndWeek = Math.min(assignmentEndWeek, totalWeeks);
+                const visibleDuration = visibleEndWeek - assignment.startWeek;
+                const barWidthInPixels = visibleDuration * 60;
+                const color = assignment.type === 'main' ? 
+                    'linear-gradient(135deg, #28a745 0%, #20c997 100%)' : 
+                    'linear-gradient(135deg, #ffc107 0%, #fd7e14 100%)';
+                const backgroundColor = assignment.type === 'main' ? '#e8f5e8' : '#fff3cd';
+                const borderColor = assignment.type === 'main' ? '#28a745' : '#ffc107';
+                return `
+                    <div style="position:absolute;left:0;width:${barWidthInPixels}px;top:50%;transform:translateY(-50%);
+                                height:20px;background:${backgroundColor};border:1.5px solid ${borderColor};
+                                border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.1);
+                                display:flex;align-items:center;z-index:2;">
+                        <div style="width:100%;height:100%;background:${color};border-radius:8px;opacity:.8;"></div>
+                        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;
+                                    font-weight:bold;font-size:9px;text-shadow:0 1px 2px rgba(0,0,0,.3);z-index:3;">
+                            ${assignment.type === 'main' ? 'Main' : 'Support'}
+                        </div>
+                    </div>
+                `;
+            }
+
+            createLeaveIndicator() {
+                return `
+                    <div style="position:absolute;top:3px;right:3px;width:14px;height:14px;
+                                background:linear-gradient(135deg,#dc3545 0%,#c82333 100%);
+                                border:2px solid white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,.3);z-index:10;" title="Leave"></div>
+                `;
+            }
+
+            getProgressColor(progress) {
+                if (progress >= 80) return 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+                if (progress >= 60) return 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)';
+                if (progress >= 40) return 'linear-gradient(135deg, #ffc107 0%, #fd7e14 100%)';
+                return 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+            }
+
+            toggleProject(projectCode) {
+                if (this.expandedProjects.has(projectCode)) {
+                    this.expandedProjects.delete(projectCode);
+                } else {
+                    this.expandedProjects.add(projectCode);
+                }
+                this.renderDashboard();
+            }
+        }
+
+        let dashboard;
+        document.addEventListener('DOMContentLoaded', function() {
+            dashboard = new ProjectDashboard();
+        });
+    </script>
+</body>
+</html>
